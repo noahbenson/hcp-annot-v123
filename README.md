@@ -10,7 +10,7 @@ Using this repository requires signing up for GitHub and downloading/running som
 
 1. You must have a GitHub account ([join here](https://github.com/join)) and you must have `git` installed ([instructions here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
 2. You must have Docker installed ([instructions here](https://docs.docker.com/get-docker/)). Docker is a virtual-machine tool that allows you to execute code packaged up in docker images by other authors without having to share an OS or software dependencies.
-3. The instructions are written for use with a BASH shell (which is usually the default for Mac OS and many flavors of Linux). You may have to change them slightly if you are using a different shell.
+3. These instructions are written for use with a BASH shell (which is usually the default for Mac OS and many flavors of Linux). You may have to change them slightly if you are using a different shell.
 
 ### Instructions
 
@@ -45,7 +45,7 @@ Using this repository requires signing up for GitHub and downloading/running som
    This indicates that the virtual machine is running.
 4. Copy-and-paste the web address starting with `http://127.0.0.1:8888/` into your web-browser. This should bring up a [Jupyter](https://jupyter.org/) interface.
 5. Click to open the file `annotate.ipynb`. This should open a new window containing a Jupyter notebook.
-6. Select the first cell of the notebook and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described elsewhere. The tool automatically saves your process as you go.
+6. Select the first cell of the notebook and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described elsewhere. The tool automatically saves your progress as you go.
 7. Once you have finished annotating (you do not need to be completely finished---just finished for the time being), you can close the Jupyter browser tabs and press Control+C in the terminal window that is running the virtual machine to shut it down.
 8. To commit your work to GitHub you can use the following command (from within the root of the `hcp-annot-v123` repository:
 
