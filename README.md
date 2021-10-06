@@ -1,4 +1,4 @@
-# Annotation of V1, V2, and V3, in the Human Connectome Project
+# Annotation of V1, V2, and V3 in the Human Connectome Project
 
 This repository is a tool for annotating the iso-eccentricity and visual area boundary contours in V1, V2, and V3 that were initially annotated by [Benson **et al**. (2021)](https://doi.org/10.1101/2020.12.30.424856).
 
