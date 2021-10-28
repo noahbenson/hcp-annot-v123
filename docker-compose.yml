@@ -1,0 +1,9 @@
+version: '3'
+services:
+   hcp-annotate:
+      build: .
+      ports:
+         - "8888:8888"
+      volumes:
+         - "$PWD/work/roi-drawing.ipynb:/home/jovyan/open_me.ipynb"
+         - "$PWD/save:/save"
