@@ -136,7 +136,7 @@ def plot_curv(fmap, axes=None, cmap='gray', prop='convexity'):
     s = fmap.property(prop)
     s = s - np.min(s)
     s /= np.max(s)
-    return ny.cortex_plot(fmap, axes=axes, color=s, vmin=0, vmax=1, cmap=cmap)
+    return ny.cortex_plot(fmap, axes=axes, color=s, vmin=1, vmax=0, cmap=cmap)
 def plot_angle(fmap, axes=None, cod_threshold=None):
     mask=(None if cod_threshold is None else
           ('prf_variance_explained', cod_threshold, np.inf))
