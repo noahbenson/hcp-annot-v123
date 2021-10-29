@@ -10,9 +10,7 @@ Using this repository requires signing up for GitHub and downloading/running som
 
 1. You must have a GitHub account ([join here](https://github.com/join)) and you must have `git` installed ([instructions here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)).
 2. You must have Docker installed ([instructions here](https://docs.docker.com/get-docker/)). Docker is a virtual-machine tool that allows you to execute code packaged up in docker images by other authors without having to share an OS or software dependencies.
-3. These instructions are written for use with a BASH shell (which is usually the default for Mac OS and many flavors of Linux). You may have to change them slightly if you are using a different shell.
-
-Additionally, we will be useing the Unix shell for entering commands (and you may need the shell for certain installation items above, depending on your operating system). [This page](https://swcarpentry.github.io/shell-novice/) contains a good introduction to the Shell, and the "Setup" link explains how to install it and get it working.
+3. These instructions are written for use with a BASH shell (which is usually the default for Mac OS and many flavors of Linux). You may have to change them slightly if you are using a different shell. [This page](https://swcarpentry.github.io/shell-novice/) contains a good introduction to the Shell, and the "Setup" link explains how to install it and get it working.
 
 ### Instructions
 
@@ -28,10 +26,10 @@ Additionally, we will be useing the Unix shell for entering commands (and you ma
    ```bash
    $ cd hcp-annot-v123
    ```
-3. Run `docker-compose` to start the virtual-machine.
+3. Run `git pull && docker-compose` to start the virtual-machine.
 
    ```bash
-   $ docker compose up
+   $ git pull && docker compose up
    ```
    
    This command will likely take a long time to run the first time you run it, and it will produce a lot of output. Near the end of the output will be something that looks like this:
