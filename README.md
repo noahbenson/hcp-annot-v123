@@ -26,10 +26,10 @@ Using this repository requires signing up for GitHub and downloading/running som
    ```bash
    $ cd hcp-annot-v123
    ```
-3. Run `docker-compose` to start the virtual-machine.
+3. Run `git pull && docker-compose` to start the virtual-machine.
 
    ```bash
-   $ docker compose up
+   $ git pull && docker compose up
    ```
    
    This command will likely take a long time to run the first time you run it, and it will produce a lot of output. Near the end of the output will be something that looks like this:
