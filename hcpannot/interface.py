@@ -17,7 +17,7 @@ from .core import image_order
 
 # The default image size; this is the assumed size of the images that are
 # downloaded from the OSF and displayed, in pixels.
-default_imshape = (864, 864)
+default_imshape = (864*2, 864*2)
 # The default x- and y-value limits of the flatmaps that were used for
 # generating the images.
 default_xlim = (-100, 100)
@@ -27,7 +27,8 @@ default_ylim = (-100, 100)
 default_grid = ((None,        'polar_angle'),
                 ('curvature', 'eccentricity'))
 # The path that we load images from by default.
-default_load_path = '/data/crcns2021/annot-images'
+default_load_path = '/data'
+default_osf_url = 'osf://tery8/'
 
 def imgrid_to_xy(pts,
                  grid=default_grid,
@@ -148,28 +149,50 @@ def clicks_update_plot(ax, plots, pts, grid=default_grid, imshape=default_imshap
     y = np.mod(y, rs)
     for plot in plots:
         (px, py) = plot.get_data()
-        dx = px[0] - x[0]
-        dy = py[0] - y[0]
-        plot.set_data(x+dx, y+dy)
+        if len(px) > 0:
+            dx = px[0] - x[0]
+            dy = py[0] - y[0]
+            plot.set_data(x+dx, y+dy)
     return plots
-
-def load_subimage(sid, h, name, load_path=default_load_path):
+def load_subimage(sid, h, name,
+                  load_path=default_load_path, osf_url=default_osf_url):
     from PIL import Image
     flnm = os.path.join(load_path, str(sid), '%d_%s_%s.png' % (sid, h, name))
     with Image.open(flnm) as im:
         arr = np.array(im)
     return arr
-def curry_load_subimage(sid, h, name, load_path=default_load_path):
-    return lambda:load_subimage(sid, h, name, load_path=load_path)
-def load_subwang(sid, h, load_path=default_load_path):
+def curry_load_subimage(sid, h, name,
+                        load_path=default_load_path, osf_url=default_osf_url):
+    return lambda:load_subimage(sid, h, name,
+                                load_path=load_path, osf_url=osf_url)
+def load_subwang(sid, h, load_path=default_load_path, osf_url=default_osf_url):
     import neuropythy as ny
     flnm = os.path.join(load_path, str(sid), '%d_%s_wang.mgz' % (sid, h))
     return np.array(ny.load(flnm, 'mgh', to='data'))
-def prep_subdata(sid, h, load_path=default_load_path):
-    ims = {imname: curry_load_subimage(sid, h, imname, load_path=load_path)
+def imcat(grid):
+    col = [np.concatenate(row, axis=1) for row in grid]
+    return np.concatenate(col, axis=0)
+def plot_imcat(ims, grid, k):
+    grid = [[ims[k if g is None else g] for g in row]
+            for row in grid]
+    return imcat(grid)
+def prep_subdata(sid, h, load_path=default_load_path, osf_url=default_osf_url):
+    dirname = os.path.join(load_path, str(sid))
+    if not os.path.isfile(dirname):
+        pp = ny.util.pseudo_path(osf_url)
+        path = pp.local_path('annot-images', '%d.tar.gz' % sid)
+        import tarfile
+        with tarfile.open(path) as fl:
+            fl.extractall(load_path)
+    ims = {imname: curry_load_subimage(sid, h, imname,
+                                       load_path=load_path, osf_url=osf_url)
            for imname in image_order}
-    ims['wang'] = lambda:load_subwang(sid, h, load_path=load_path)
+    ims['wang'] = lambda:load_subwang(sid, h,
+                                      load_path=load_path, osf_url=osf_url)
     return pimms.lmap(ims)
+def curry_prep_subdata(sid, h,
+                       load_path=default_load_path, osf_url=default_osf_url):
+    return lambda:prep_subdata(sid, h, load_path=load_path, osf_url=osf_url)
 
 subject_ids = (100610, 102311, 102816, 104416, 105923, 108323, 109123, 111312,
                111514, 114823, 115017, 115825, 116726, 118225, 125525, 126426,
@@ -195,9 +218,9 @@ subject_ids = (100610, 102311, 102816, 104416, 105923, 108323, 109123, 111312,
                901442, 905147, 910241, 926862, 927359, 942658, 943862, 951457,
                958976, 966975, 971160, 973770, 995174)
 
-subject_data = pyr.pmap({(sid,h): prep_subdata(sid, h)
-                         for sid in subject_ids
-                         for h in ['lh','rh']})
+subject_data = pimms.lmap({(sid,h): curry_prep_subdata(sid, h)
+                           for sid in subject_ids
+                           for h in ['lh','rh']})
 
 boundary_contours = pyr.pmap(
     {'V1-middle': 'isoang_90',
@@ -248,7 +271,7 @@ class ROITool(object):
             layout={'width': dropdown_width})
         self.line_select = widgets.Dropdown(
             options=contour_names,
-            index=0,
+            value=self.start_contour,
             description='Contour:',
             layout={'width': dropdown_width})
         self.anat_shown = widgets.Checkbox(
@@ -270,10 +293,10 @@ class ROITool(object):
         self.notes_area = widgets.Textarea(
             value='', 
             description='',
-            layout={'height': '%dpx' % (figh//2), 'width': '95%'})
+            layout={'height': '%dpx' % (200), 'width': '95%'})
         self.notes_panel = widgets.VBox(
             [widgets.Label('Contour Notes:'), self.notes_area],
-            layout={'align_items': 'flex-start', 'width':'100%'})
+            layout={'align_items': 'flex-start', 'width':'100%', 'height':'200px'})
         self.save_button = widgets.Button(description='Save.')
         #center_layout = widgets.Layout(align_items='center')
         self.save_box = widgets.HBox(
@@ -288,20 +311,20 @@ class ROITool(object):
                          self.contour_color,
                          self.notes_panel,
                          self.save_button)
-        self.control_panel = widgets.VBox(self.controls)
+        self.control_panel = widgets.VBox(self.controls, layout={'height': '95%'})
         # The start/default values:
         self.sid = self.sid_select.value
         self.hemi = self.hemi_select.value.lower()
         # Setup the figure.
         subdata = subject_data[(self.sid, self.hemi)]
-        im0 = subdata[start_contour]
+        im0 = plot_imcat(subdata, grid, start_contour)
         segs = subdata['wang']
-        (im_rs, im_cs) = imshape
-        (dot_rs, dot_cs) = (im_rs*grid_rs, im_cs*grid_cs)
+        #(im_rs, im_cs) = imshape
+        (dot_rs, dot_cs) = imshape #(im_rs*grid_rs, im_cs*grid_cs)
         (fig,ax) = plt.subplots(
             constrained_layout=True,
             figsize=(figsize, figsize*grid_rs/grid_cs),
-            dpi=dot_cs/figsize)
+            dpi=72*4)
         self.figure = fig
         self.axes = ax
         fig.canvas.toolbar_position = 'bottom'
@@ -328,8 +351,8 @@ class ROITool(object):
             #fig.canvas.mpl_connect('close_event', self.on_close),
             fig.canvas.mpl_connect('button_press_event', self.on_click)]
         # Final touches:
-        self.control_panel.layout = widgets.Layout(width=sidepanel_width)
         self.control_panel.layout = widgets.Layout(width=sidepanel_width,
+                                                   height='600px',
                                                    align_items='center')
         pane = widgets.HBox(
             [self.control_panel, fig.canvas],
@@ -337,6 +360,7 @@ class ROITool(object):
                 flex_flow='row',
                 align_items='center',
                 width='100%',
+                height='700px',
                 border='#000000'))
         display(pane)
         # For saving errors that get caught in events:
@@ -365,7 +389,7 @@ class ROITool(object):
             subdata = subject_data[(sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = subdata[c]
+            im0 = plot_imcat(subdata, grid, c)
             self.image_plot.set_data(im0)
             for ln in self.wang_plot: ln.remove()
             segs = subdata['wang']
@@ -375,9 +399,9 @@ class ROITool(object):
                 color=self.anat_color.value, lw=0.3, zorder=10)
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                    ax, pts, 
+                    ax, pts, 'o-',
                     grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
+                    color=self.contour_color.value, lw=0.5, ms=1.5)
             # Update the output data:
             self.sid = sid
             # Update the controls:
@@ -386,11 +410,11 @@ class ROITool(object):
             self.contour_shown.value = True
         elif var == 'hemi':
             # New plots:
-            h = change.value
+            h = change.new
             subdata = subject_data[(self.sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = subdata[c]
+            im0 = plot_imcat(subdata, grid, c)
             self.image_plot.set_data(im0)
             # Update Wang plot lines:
             for ln in self.wang_plot: ln.remove()
@@ -405,9 +429,9 @@ class ROITool(object):
             for c in self.contour_plot: c.remove()
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                    ax, pts, 
+                    ax, pts, 'o-',
                     grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
+                    color=self.contour_color.value, lw=0.5, ms=1.5)
             # Update the output data:
             self.hemi = h
             # Update the controls:
@@ -420,15 +444,17 @@ class ROITool(object):
             contour = change.new
             c = contour_key[contour]
             subdata = subject_data[(sid,h)]
-            im = subdata[c]
+            im = plot_imcat(subdata, self.grid, c)
             self.image_plot.set_data(im)
             self.contour_shown.value = True
             # Redraw the chosen contours if need-be
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                ax, pts,
+                ax, pts, 'o-',
                 grid=self.grid, imshape=self.imshape,
-                color=self.contour_color.value, lw=0.5, ms=1)
+                color=self.contour_color.value, lw=0.5, ms=1.5)
+            for ln in self.contour_plot:
+                ln.set_visible(True)
         elif var == 'anat':
             anat = change.new
             for ln in self.wang_plot: ln.set_visible(anat)
@@ -471,11 +497,13 @@ class ROITool(object):
             else: # add the points
                 pts.append((event.xdata, event.ydata))
             # redraw the line regardless
-            if len(cplot) == 0:
+            if len(pts) == 1:
                 self.contour_plot = clicks_decorate_plot(
-                    ax, pts,
+                    ax, pts, 'o-',
                     grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
+                    color=self.contour_color.value, lw=0.5, ms=1.5)
+                for ln in self.contour_plot:
+                    ln.set_visible(True)
             else:
                 clicks_update_plot(
                     ax, self.contour_plot, pts,

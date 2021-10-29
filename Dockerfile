@@ -19,9 +19,10 @@ RUN conda install --yes -c conda-forge ipywidgets
 RUN pip install --upgrade setuptools
 RUN pip install 'ipyvolume>=0.5.1'
 
-RUN git clone https://github.com/noahbenson/neuropythy\
+RUN git clone https://github.com/noahbenson/neuropythy \
  && cd neuropythy \
- && pip install -r requirements-dev.txt \
+ && pip install -r requirements.txt \
+ && pip install matplotlib \
  && python setup.py install
 
 RUN mkdir -p /home/$NB_USER/.jupyter \
@@ -36,10 +37,10 @@ RUN jupyter nbextension enable collapsible_headings/main \
 # The root operations ...
 USER root
 
-# Make sure we have the run.sh script ready:
-RUN cp /home/$NB_USER/neuropythy/docker/main.sh /main.sh \
- && cp /home/$NB_USER/neuropythy/docker/help.txt /help.txt \
- && chmod 755 /main.sh /help.txt
+# Install curl
+RUN apt-get update && apt-get install --yes curl
+# Make some directories
+RUN mkdir /data && mkdir /save && chown $NB_USER /data /save && chmod 755 /data /save
 
 USER $NB_USER
 
@@ -55,7 +56,10 @@ RUN cd ~/.local/share/fonts/helvetica_neue_tmp \
 RUN fc-cache -f -v
 RUN rm -r ~/.cache/matplotlib
 
+# Remove the work directory and hide neuropythy
+RUN rmdir /home/$NB_USER/work \
+ && mv /home/$NB_USER/neuropythy /home/$NB_USER/.neuropythy
+
 # And mark it as the entrypoint
-#CMD ["/main.sh"]
-ENTRYPOINT ["tini", "-g", "--", "/main.sh"]
+ENTRYPOINT ["tini", "-g", "--", "/usr/local/bin/start-notebook.sh"]
 
