@@ -21,6 +21,8 @@ Using this repository requires signing up for GitHub and downloading/running som
    $ git clone https://github.com/<username>/hcp-annot-v123
    ```
    
+   (Be sure to replace the "`<username>`" in the previous command with your GitHub username.)
+   
    Then `cd` into the new directory.
    
    ```bash
