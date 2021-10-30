@@ -68,6 +68,7 @@ COPY custom.css /home/$NB_USER/.jupyter/custom/
 COPY custom.js /home/$NB_USER/.jupyter/custom/
 COPY ipython-startup.py /home/$NB_USER/.ipython/profile_default/startup/
 COPY ipython_kernel_config.py /home/$NB_USER/.ipython/profile_default/
+COPY work/roi-drawing.ipynb /home/$NB_USER/open_me.ipynb
 
 USER root
 RUN chown -R $NB_USER /home/$NB_USER/.ipython && chmod 700 /home/$NB_USER/.ipython

@@ -5,7 +5,6 @@ services:
       ports:
          - "8888:8888"
       volumes:
-         - ${PWD}/work/roi-drawing.ipynb:/home/jovyan/open_me.ipynb
          - ${PWD}/hcpannot:/opt/conda/lib/python3.9/hcpannot
          - ${PWD}/save:/save
          - ${PWD}/.git:/home/jovyan/.extgit
