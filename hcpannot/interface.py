@@ -268,17 +268,15 @@ class ROITool(object):
         self.contour_lw = contour_lw
         self.contour_ms = contour_ms
         if savedir is None:
+            savedir = os.environ.get('GIT_USERNAME', None)
+        if savedir is None:
             raise ValueError(
                 'Please provide a save directory (savedir option)')
-        elif 'netid' in savedir:
-            raise ValueError(
-                'Please replace the <netid> in the savedir with your Net-ID')
-        else:
-            savedir = os.path.join('/', 'save', savedir)
-            savedir = os.path.expanduser(savedir)
-            if not os.path.isdir(savedir):
-                os.makedirs(savedir, mode=0o755)
-            self.savedir = savedir
+        savedir = os.path.join('/', 'save', savedir)
+        savedir = os.path.expanduser(savedir)
+        if not os.path.isdir(savedir):
+            os.makedirs(savedir, mode=0o755)
+        self.savedir = savedir
         # We need to load up the clicks if there are any saved.
         self.clicks = None
         self.clicks_updated = {}
