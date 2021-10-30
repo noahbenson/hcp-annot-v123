@@ -632,6 +632,7 @@ class ROITool(object):
         newl.clear()
         for el in orig:
             newl.append(el)
+        self.redraw_contours()
         return tmp
     def redraw_contours(self):
         sid = self.sid
