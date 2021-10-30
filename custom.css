@@ -1,0 +1,8 @@
+.container { width:100% !important; }
+
+div#site{
+    height: 100% !important;
+}
+div#notebook{
+  padding: 0;
+}

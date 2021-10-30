@@ -17,7 +17,7 @@ from .core import image_order
 
 # The default image size; this is the assumed size of the images that are
 # downloaded from the OSF and displayed, in pixels.
-default_imshape = (864, 864)
+default_imshape = (864*2, 864*2)
 # The default x- and y-value limits of the flatmaps that were used for
 # generating the images.
 default_xlim = (-100, 100)
@@ -27,7 +27,8 @@ default_ylim = (-100, 100)
 default_grid = ((None,        'polar_angle'),
                 ('curvature', 'eccentricity'))
 # The path that we load images from by default.
-default_load_path = '/data/crcns2021/annot-images'
+default_load_path = '/data'
+default_osf_url = 'osf://tery8/'
 
 def imgrid_to_xy(pts,
                  grid=default_grid,
@@ -148,28 +149,50 @@ def clicks_update_plot(ax, plots, pts, grid=default_grid, imshape=default_imshap
     y = np.mod(y, rs)
     for plot in plots:
         (px, py) = plot.get_data()
-        dx = px[0] - x[0]
-        dy = py[0] - y[0]
-        plot.set_data(x+dx, y+dy)
+        if len(px) > 0:
+            dx = px[0] - x[0]
+            dy = py[0] - y[0]
+            plot.set_data(x+dx, y+dy)
     return plots
-
-def load_subimage(sid, h, name, load_path=default_load_path):
+def load_subimage(sid, h, name,
+                  load_path=default_load_path, osf_url=default_osf_url):
     from PIL import Image
     flnm = os.path.join(load_path, str(sid), '%d_%s_%s.png' % (sid, h, name))
     with Image.open(flnm) as im:
         arr = np.array(im)
     return arr
-def curry_load_subimage(sid, h, name, load_path=default_load_path):
-    return lambda:load_subimage(sid, h, name, load_path=load_path)
-def load_subwang(sid, h, load_path=default_load_path):
+def curry_load_subimage(sid, h, name,
+                        load_path=default_load_path, osf_url=default_osf_url):
+    return lambda:load_subimage(sid, h, name,
+                                load_path=load_path, osf_url=osf_url)
+def load_subwang(sid, h, load_path=default_load_path, osf_url=default_osf_url):
     import neuropythy as ny
     flnm = os.path.join(load_path, str(sid), '%d_%s_wang.mgz' % (sid, h))
     return np.array(ny.load(flnm, 'mgh', to='data'))
-def prep_subdata(sid, h, load_path=default_load_path):
-    ims = {imname: curry_load_subimage(sid, h, imname, load_path=load_path)
+def imcat(grid):
+    col = [np.concatenate(row, axis=1) for row in grid]
+    return np.concatenate(col, axis=0)
+def plot_imcat(ims, grid, k):
+    grid = [[ims[k if g is None else g] for g in row]
+            for row in grid]
+    return imcat(grid)
+def prep_subdata(sid, h, load_path=default_load_path, osf_url=default_osf_url):
+    dirname = os.path.join(load_path, str(sid))
+    if not os.path.isfile(dirname):
+        pp = ny.util.pseudo_path(osf_url)
+        path = pp.local_path('annot-images', '%d.tar.gz' % sid)
+        import tarfile
+        with tarfile.open(path) as fl:
+            fl.extractall(load_path)
+    ims = {imname: curry_load_subimage(sid, h, imname,
+                                       load_path=load_path, osf_url=osf_url)
            for imname in image_order}
-    ims['wang'] = lambda:load_subwang(sid, h, load_path=load_path)
+    ims['wang'] = lambda:load_subwang(sid, h,
+                                      load_path=load_path, osf_url=osf_url)
     return pimms.lmap(ims)
+def curry_prep_subdata(sid, h,
+                       load_path=default_load_path, osf_url=default_osf_url):
+    return lambda:prep_subdata(sid, h, load_path=load_path, osf_url=osf_url)
 
 subject_ids = (100610, 102311, 102816, 104416, 105923, 108323, 109123, 111312,
                111514, 114823, 115017, 115825, 116726, 118225, 125525, 126426,
@@ -195,9 +218,9 @@ subject_ids = (100610, 102311, 102816, 104416, 105923, 108323, 109123, 111312,
                901442, 905147, 910241, 926862, 927359, 942658, 943862, 951457,
                958976, 966975, 971160, 973770, 995174)
 
-subject_data = pyr.pmap({(sid,h): prep_subdata(sid, h)
-                         for sid in subject_ids
-                         for h in ['lh','rh']})
+subject_data = pimms.lmap({(sid,h): curry_prep_subdata(sid, h)
+                           for sid in subject_ids
+                           for h in ['lh','rh']})
 
 boundary_contours = pyr.pmap(
     {'V1-middle': 'isoang_90',
@@ -215,6 +238,19 @@ contour_key['0.5° iso-eccen'] = 'isoecc_0.5'
 for k in [1,2,4,7]:
     contour_key['%d° iso-eccen' % k] = 'isoecc_%d' % k
 contour_key = pyr.pmap(contour_key)
+contour_save_key = pyr.pmap(
+    {'V1-middle': 'isoang_V1m',
+     'V1/V2 dorsal': 'isoang_V1d',
+     'V1/V2 ventral': 'isoang_V1v',
+     'V2/V3 dorsal': 'isoang_V2d',
+     'V2/V3 ventral': 'isoang_V2v',
+     'V3/Outer dorsal': 'isoang_V3d',
+     'V3/Outer ventral': 'isoang_V3v',
+     '0.5° iso-eccen': 'isoecc_0pt5',
+     '1° iso-eccen': 'isoecc_1',
+     '2° iso-eccen': 'isoecc_2',
+     '4° iso-eccen': 'isoecc_4',
+     '7° iso-eccen': 'isoecc_7'})
 
 # #ROITool #####################################################################
 class ROITool(object):
@@ -222,19 +258,34 @@ class ROITool(object):
     ROITool is a tool for drawing ROIs and contours on the HCP.
     '''
     def __init__(self,
-                 figsize=2.5, sidepanel_width='250px', dropdown_width='85%',
+                 figsize=1, sidepanel_width='250px', dropdown_width='85%',
+                 savedir=None,
                  start_contour='V3/Outer ventral',
-                 imshape=default_imshape, grid=default_grid):
-        self.imshape = imshape
+                 grid=default_grid, dpi=72*8,
+                 contour_lw=0.25, contour_ms=0.25):
         self.grid = grid
         self.start_contour = start_contour
+        self.contour_lw = contour_lw
+        self.contour_ms = contour_ms
+        if savedir is None:
+            raise ValueError(
+                'Please provide a save directory (savedir option)')
+        elif 'netid' in savedir:
+            raise ValueError(
+                'Please replace the <netid> in the savedir with your Net-ID')
+        else:
+            savedir = os.path.join('/', 'save', savedir)
+            savedir = os.path.expanduser(savedir)
+            if not os.path.isdir(savedir):
+                os.makedirs(savedir, mode=0o755)
+            self.savedir = savedir
+        # We need to load up the clicks if there are any saved.
+        self.clicks = None
+        self.clicks_updated = {}
+        self.load_clicks()
         start_contour = contour_key[start_contour]
         (grid_rs, grid_cs) = (len(grid), len(grid[0]))
         figh = figsize * grid_rs / grid_cs
-        # We store clicks in auto-dicts.
-        self.clicks = {sid: {h: ny.util.auto_dict(None, [])
-                             for h in ['lh','rh']}
-                       for sid in subject_ids}
         # Go ahead and setup the Widgets.
         self.sid_select = widgets.Dropdown(
             options=subject_ids,
@@ -248,12 +299,12 @@ class ROITool(object):
             layout={'width': dropdown_width})
         self.line_select = widgets.Dropdown(
             options=contour_names,
-            index=0,
+            value=self.start_contour,
             description='Contour:',
             layout={'width': dropdown_width})
         self.anat_shown = widgets.Checkbox(
             description='Wang et al. (2015) Contours',
-            value=True)
+            value=False)
         self.anat_color = widgets.ColorPicker(
             description='Wang Color:',
             concise=True,
@@ -270,14 +321,15 @@ class ROITool(object):
         self.notes_area = widgets.Textarea(
             value='', 
             description='',
-            layout={'height': '%dpx' % (figh//2), 'width': '95%'})
+            layout={'width': '95%', 'height': sidepanel_width})
         self.notes_panel = widgets.VBox(
             [widgets.Label('Contour Notes:'), self.notes_area],
             layout={'align_items': 'flex-start', 'width':'100%'})
         self.save_button = widgets.Button(description='Save.')
+        self.reset_button = widgets.Button(description='Reset.')
         #center_layout = widgets.Layout(align_items='center')
         self.save_box = widgets.HBox(
-            children=[self.save_button],
+            children=[self.save_button, self.reset_button],
             layout={'align_items': 'center'})
         self.controls = (self.sid_select,
                          self.hemi_select,
@@ -287,24 +339,31 @@ class ROITool(object):
                          self.contour_shown,
                          self.contour_color,
                          self.notes_panel,
-                         self.save_button)
-        self.control_panel = widgets.VBox(self.controls)
+                         self.save_button,
+                         self.reset_button)
         # The start/default values:
         self.sid = self.sid_select.value
         self.hemi = self.hemi_select.value.lower()
         # Setup the figure.
         subdata = subject_data[(self.sid, self.hemi)]
-        im0 = subdata[start_contour]
         segs = subdata['wang']
+        im0 = plot_imcat(subdata, grid, start_contour)
+        imshape = im0.shape[:2]
+        self.imshape = imshape
         (im_rs, im_cs) = imshape
+        figw_px = figsize * dpi
+        figh_px = figw_px * im_rs // im_cs
+        figshape = (figh_px, figw_px)
+        (figh, figw) = [('%dpx' % q) for q in figshape]
+        self.control_panel = widgets.VBox(self.controls, layout={'height':'100%'})
         (dot_rs, dot_cs) = (im_rs*grid_rs, im_cs*grid_cs)
         (fig,ax) = plt.subplots(
             constrained_layout=True,
-            figsize=(figsize, figsize*grid_rs/grid_cs),
-            dpi=dot_cs/figsize)
+            figsize=(figsize, figsize*dot_rs/dot_cs),
+            dpi=dpi)
         self.figure = fig
         self.axes = ax
-        fig.canvas.toolbar_position = 'bottom'
+        fig.canvas.toolbar_visible = False
         fig.canvas.title_visible = False
         fig.canvas.header_visible = False
         fig.canvas.footer_visible = False
@@ -312,7 +371,8 @@ class ROITool(object):
         self.wang_plot = segs_decorate_plot(
             ax, segs, color=self.anat_color.value, lw=0.3, zorder=10,
             grid=grid, imshape=imshape)
-        self.contour_plot = []
+        for ln in self.wang_plot:
+            ln.set_visible(self.anat_shown.value)
         # Initialize the display for this subject/hemi
         self.image_plot = ax.imshow(im0)
         ax.axis('off')
@@ -324,12 +384,21 @@ class ROITool(object):
         self.contour_shown.observe(ny.util.curry(self.update, 'contour'), 'value')
         self.anat_color.observe(ny.util.curry(self.update, 'anatcolor'), 'value')
         self.contour_color.observe(ny.util.curry(self.update, 'contourcolor'), 'value')
+        self.notes_area.observe(ny.util.curry(self.update, 'notes'), 'value')
+        self.save_button.on_click(lambda b:self.save())
+        self.reset_button.on_click(lambda b:self.reset())
         self.canvas_conns = [
             #fig.canvas.mpl_connect('close_event', self.on_close),
             fig.canvas.mpl_connect('button_press_event', self.on_click)]
         # Final touches:
-        self.control_panel.layout = widgets.Layout(width=sidepanel_width)
+        self.bg_contour_plot = []
+        self.draw_bg_contours()
+        self.contour_plot = []
+        self.redraw_contours()
+        self.notes = None
+        self.load_notes()
         self.control_panel.layout = widgets.Layout(width=sidepanel_width,
+                                                   height='100%',
                                                    align_items='center')
         pane = widgets.HBox(
             [self.control_panel, fig.canvas],
@@ -337,6 +406,7 @@ class ROITool(object):
                 flex_flow='row',
                 align_items='center',
                 width='100%',
+                height=('%dpx' % (figh_px+6)),
                 border='#000000'))
         display(pane)
         # For saving errors that get caught in events:
@@ -354,9 +424,10 @@ class ROITool(object):
         wangplot = self.wang_plot
         # What updated?
         if var == 'sid':
+            self.save()
             # What's the new control selection:
             sid = int(change.new)
-            h = self.hemi
+            h = self.hemi.lower()
             # Remove contour plots if need-be
             for c in self.contour_plot:
                 c.remove()
@@ -365,7 +436,7 @@ class ROITool(object):
             subdata = subject_data[(sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = subdata[c]
+            im0 = plot_imcat(subdata, grid, c)
             self.image_plot.set_data(im0)
             for ln in self.wang_plot: ln.remove()
             segs = subdata['wang']
@@ -375,22 +446,26 @@ class ROITool(object):
                 color=self.anat_color.value, lw=0.3, zorder=10)
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                    ax, pts, 
-                    grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
+                ax, pts, 'o-',
+                grid=self.grid, imshape=self.imshape,
+                color=self.contour_color.value,
+                lw=self.contour_lw, ms=self.contour_ms)
             # Update the output data:
             self.sid = sid
+            self.draw_bg_contours()
             # Update the controls:
             #anat_shown.value = True
             self.line_select.value = self.start_contour
             self.contour_shown.value = True
+            self.notes_area.value = self.notes[sid][h][contour][0]
         elif var == 'hemi':
+            self.save()
             # New plots:
-            h = change.value
+            h = change.new.lower()
             subdata = subject_data[(self.sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = subdata[c]
+            im0 = plot_imcat(subdata, grid, c)
             self.image_plot.set_data(im0)
             # Update Wang plot lines:
             for ln in self.wang_plot: ln.remove()
@@ -405,50 +480,64 @@ class ROITool(object):
             for c in self.contour_plot: c.remove()
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                    ax, pts, 
-                    grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
+                ax, pts, 'o-',
+                grid=self.grid, imshape=self.imshape,
+                color=self.contour_color.value,
+                lw=self.contour_lw, ms=self.contour_ms)
             # Update the output data:
             self.hemi = h
+            self.draw_bg_contours()
             # Update the controls:
             #anat_shown.value = True
             self.line_select.value = self.start_contour
             self.contour_shown.value = True
+            self.notes_area.value = self.notes[sid][h][contour][0]
         elif var == 'line':
+            self.save()
             # Remove contour plots if need-be
             for c in self.contour_plot: c.remove()
             contour = change.new
             c = contour_key[contour]
             subdata = subject_data[(sid,h)]
-            im = subdata[c]
+            im = plot_imcat(subdata, self.grid, c)
             self.image_plot.set_data(im)
             self.contour_shown.value = True
             # Redraw the chosen contours if need-be
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
-                ax, pts,
+                ax, pts, 'o-',
                 grid=self.grid, imshape=self.imshape,
-                color=self.contour_color.value, lw=0.5, ms=1)
+                color=self.contour_color.value,
+                lw=self.contour_lw, ms=self.contour_ms)
+            for ln in self.contour_plot:
+                ln.set_visible(True)
+            self.draw_bg_contours()
+            self.notes_area.value = self.notes[sid][h][contour][0]
         elif var == 'anat':
             anat = change.new
             for ln in self.wang_plot: ln.set_visible(anat)
         elif var == 'contour':
             c = change.new
-            cplot = self.contour_plot
-            for ln in cplot: ln.set_visible(c)
+            for ln in self.contour_plot: ln.set_visible(c)
+            for ln in self.bg_contour_plot: ln.set_visible(c)
         elif var == 'anatcolor':
             c = change.new
             for ln in self.wang_plot: ln.set_color(c)
         elif var == 'contourcolor':
             c = change.new
-            cplot = self.contour_plot
-            for ln in cplot: ln.set_color(c)
-        else: return
+            for ln in self.contour_plot: ln.set_color(c)
+            for ln in self.bg_contour_plot: ln.set_color(c)
+        elif var == 'notes':
+            self.notes[sid][h][contour][0] = change.new
+            # no need to redraw
+            return None
+        else: return None
         fig.canvas.draw_idle()
         return None
     
     # Setup the figure clicks!
     def on_click(self, event):
+        if not self.contour_shown.value: return None
         try:
             ax = self.axes
             fig = self.figure
@@ -458,32 +547,217 @@ class ROITool(object):
             contour = self.line_select.value
             c = contour_key[contour]
             cplot = self.contour_plot
-            pts = self.clicks[sid][h][contour]
             # if shift is down, we delete the last point
-            if event.key == 'shift':
-                if len(pts) == 0: return
-                del pts[-1]
-                if len(pts) == 0:
-                    self.contour_plot = []
-                    for ln in cplot: ln.remove()
-                    fig.canvas.draw()
-                    return
+            ctrlkeys = ['control', 'ctrl']
+            bothkeys = ['shift+control', 'shift+ctrl', 'control+shift', 'ctrl+shift']
+            if event.key in ctrlkeys: # control means delete
+                self.rmlast_click()
+            elif event.key in bothkeys:
+                self.rmfirst_click()
+            elif event.key == 'shift': # shift means front instead of end
+                self.prepend_click((event.xdata, event.ydata))
             else: # add the points
-                pts.append((event.xdata, event.ydata))
-            # redraw the line regardless
-            if len(cplot) == 0:
-                self.contour_plot = clicks_decorate_plot(
-                    ax, pts,
-                    grid=self.grid, imshape=self.imshape,
-                    color=self.contour_color.value, lw=0.5, ms=1)
-            else:
-                clicks_update_plot(
-                    ax, self.contour_plot, pts,
-                    grid=self.grid, imshape=self.imshape)
+                self.append_click((event.xdata, event.ydata))
             fig.canvas.draw()
         except Exception as e:
             self._event_error = sys.exc_info()
             raise
+    def draw_bg_contours(self):
+        for ln in self.bg_contour_plot: ln.remove()
+        contour = self.line_select.value
+        c = contour_key[contour]
+        sid = self.sid
+        h = self.hemi.lower()
+        ax = self.axes
+        subdata = subject_data[(sid,h)]
+        plots = []
+        for c in contour_names:
+            if c == contour: continue
+            pts = self.clicks[sid][h][c]
+            plots += clicks_decorate_plot(
+                ax, pts, '.:',
+                grid=self.grid, imshape=self.imshape,
+                color=self.contour_color.value,
+                lw=self.contour_lw/2, ms=self.contour_ms/4)
+        self.bg_contour_plot = plots
+    def _get_subdir(self, sid):
+        flnm = os.path.join(self.savedir, str(sid))
+        if os.path.isdir(self.savedir) and not os.path.isdir(flnm):
+            os.makedirs(flnm, mode=0o755)
+        return flnm
+    def load_clicks(self):
+        def load_click_file(sid,h,c,subdir):
+            flnm = os.path.join(subdir, f'{h}.{c}.json')
+            if os.path.isfile(flnm):
+                return ny.load(flnm)
+            else:
+                return []
+        cl = {}
+        for sid in subject_ids:
+            subdir = self._get_subdir(sid)
+            r = {}
+            for h in ['lh','rh']:
+                rr = {}
+                for contour in contour_names:
+                    c = contour_save_key[contour]
+                    rr[contour] = ny.util.curry(load_click_file,
+                                                sid, h, c, subdir)
+                r[h] = pimms.lmap(rr)
+            cl[sid] = r
+        self.clicks = cl
+        self.clicks_updated = {}
+    def save(self):
+        self.save_clicks()
+        self.save_notes()
+    def reset(self):
+        self.reset_clicks()
+        self.reset_notes()
+    def save_clicks(self):
+        for ((sid,h,contour),orig) in self.clicks_updated.items():
+            subdir = self._get_subdir(sid)
+            c = contour_save_key[contour]
+            flnm = os.path.join(subdir, f'{h}.{c}.json')
+            ny.save(flnm, self.clicks[sid][h][contour])
+        # At this point, the clicks are no longer "updated"
+        self.clicks_updated = {}
+    def reset_clicks(self):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        tup = (sid,h,contour)
+        orig = self.clicks_updated.get(tup, None)
+        newl = self.clicks[sid][h][contour]
+        if orig is None: return None
+        tmp = newl.copy()
+        newl = self.clicks[sid][h][contour]
+        # Restore the originals:
+        newl.clear()
+        for el in orig:
+            newl.append(el)
+        return tmp
+    def redraw_contours(self):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        ax = self.axes
+        pts = self.clicks[sid][h][contour]
+        for c in self.contour_plot: c.remove()
+        self.contour_plot = []
+        if len(pts) > 0:
+            self.contour_plot = clicks_decorate_plot(
+                ax, pts, 'o-',
+                grid=self.grid, imshape=self.imshape,
+                color=self.contour_color.value,
+                lw=self.contour_lw, ms=self.contour_ms)
+        return None
+    def append_click(self, pt):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        tup = (sid,h,contour)
+        cl0 = self.clicks[sid][h][contour]
+        orig = self.clicks_updated.get(tup, None)
+        if orig is None:
+            orig = cl0.copy()
+            self.clicks_updated[tup] = orig
+        cl0.append(pt)
+        self.redraw_contours()
+        return None
+    def prepend_click(self, pt):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        tup = (sid,h,contour)
+        cl0 = self.clicks[sid][h][contour]
+        orig = self.clicks_updated.get(tup, None)
+        if orig is None:
+            orig = cl0.copy()
+            self.clicks_updated[tup] = orig
+        cl0.insert(0, pt)
+        self.redraw_contours()
+        return None
+    def rmlast_click(self):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        tup = (sid,h,contour)
+        cl0 = self.clicks[sid][h][contour]
+        if len(cl0) == 0: return None
+        orig = self.clicks_updated.get(tup, None)
+        if orig is None:
+            orig = cl0.copy()
+            self.clicks_updated[tup] = orig
+        cl0.pop()
+        self.redraw_contours()
+        return None
+    def rmfirst_click(self):
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        tup = (sid,h,contour)
+        cl0 = self.clicks[sid][h][contour]
+        if len(cl0) == 0: return None
+        orig = self.clicks_updated.get(tup, None)
+        if orig is None:
+            orig = cl0.copy()
+            self.clicks_updated[tup] = orig
+        del cl0[0]
+        self.redraw_contours()
+        return None
+    def load_notes(self):
+        def load_notes_file(sid,h,c,subdir):
+            flnm = os.path.join(subdir, f'{h}.{c}_notes.txt')
+            if os.path.isfile(flnm):
+                s = ny.load(flnm)
+                return [s, s]
+            else:
+                return ['', '']
+        notes = {}
+        for sid in subject_ids:
+            subdir = self._get_subdir(sid)
+            r = {}
+            for h in ['lh','rh']:
+                rr = {}
+                for contour in contour_names:
+                    c = contour_save_key[contour]
+                    rr[contour] = ny.util.curry(load_notes_file,
+                                                sid, h, c, subdir)
+                r[h] = pimms.lmap(rr)
+            notes[sid] = r
+        self.notes = notes
+        # update the notes if need-be
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        self.notes_area.value = notes[sid][h][contour][0]
+        return None
+    def save_notes(self):
+        for (sid,uu) in self.notes.items():
+            for (h,u) in uu.items():
+                for contour in u.keys():
+                    if u.is_lazy(contour): continue
+                    v = u[contour]
+                    if v[0] == v[1]: continue
+                    c = contour_save_key[contour]
+                    subdir = self._get_subdir(sid)
+                    flnm = os.path.join(subdir, f'{h}.{c}_notes.txt')
+                    ny.save(flnm, v[0])
+                    v[1] = v[0]
+        return None
+    def reset_notes(self):
+        for (sid,uu) in self.notes.items():
+            for (h,u) in uu.items():
+                for c in u.keys():
+                    if u.is_lazy(c): continue
+                    v = u[c]
+                    if v[0] == v[1]: continue
+                    v[0] = v[1]
+        # reset the notes area:
+        sid = self.sid
+        h = self.hemi.lower()
+        contour = self.line_select.value
+        self.notes_area.value = self.notes[sid][h][contour][0]
+        
         
         
         
