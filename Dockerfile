@@ -28,7 +28,7 @@ RUN git clone https://github.com/noahbenson/neuropythy \
  && python setup.py install
 
 RUN mkdir -p /home/$NB_USER/.jupyter
-COPY jupyter_notebook_config.py /home/$NB_USER/.jupyter/
+COPY docker/jupyter_notebook_config.py /home/$NB_USER/.jupyter/
 
 # Install collapsible cell extensions...
 RUN conda install -c conda-forge jupyter_contrib_nbextensions
@@ -64,10 +64,10 @@ RUN rmdir /home/$NB_USER/work \
 
 # Reconfigure Jupyter a bit
 RUN mkdir -p ~/.jupyter/custom
-COPY custom.css /home/$NB_USER/.jupyter/custom/
-COPY custom.js /home/$NB_USER/.jupyter/custom/
-COPY ipython-startup.py /home/$NB_USER/.ipython/profile_default/startup/
-COPY ipython_kernel_config.py /home/$NB_USER/.ipython/profile_default/
+COPY docker/custom.css /home/$NB_USER/.jupyter/custom/
+COPY docker/custom.js /home/$NB_USER/.jupyter/custom/
+COPY docker/ipython-startup.py /home/$NB_USER/.ipython/profile_default/startup/
+COPY docker/ipython_kernel_config.py /home/$NB_USER/.ipython/profile_default/
 COPY work/roi-drawing.ipynb /home/$NB_USER/open_me.ipynb
 
 USER root
