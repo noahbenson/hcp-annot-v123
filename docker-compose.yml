@@ -7,3 +7,4 @@ services:
       volumes:
          - "$PWD/work/roi-drawing.ipynb:/home/jovyan/open_me.ipynb"
          - "$PWD/save:/save"
+         - "$PWD/.git:/home/jovyan/.extgit"
