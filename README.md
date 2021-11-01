@@ -14,6 +14,8 @@ Using this repository requires signing up for GitHub and downloading/running som
 
 ### Instructions
 
+#### Setup (only follow these instructions once)
+
 1. Make a fork of this repository into your own GitHub profile. This is done using the "Fork" button in the upper-right corner of this repository's GitHub page.
 2. In a BASH shell, clone your own version of this repository.
 
@@ -28,7 +30,16 @@ Using this repository requires signing up for GitHub and downloading/running som
    ```bash
    $ cd hcp-annot-v123
    ```
-3. Run `git pull && docker-compose` to start the virtual-machine.
+
+#### Running the Tool (follow these each time you work on the project)
+
+3. Run `git fetch upstream/main` to update the repository with any new changes.
+   
+   ```bash
+   $ git fetch upstream/main
+   ```
+   
+4. Run `docker compose up --build` to start the virtual-machine.
 
    ```bash
    $ git pull && docker compose up
@@ -45,11 +56,11 @@ Using this repository requires signing up for GitHub and downloading/running som
    ```
    
    This indicates that the virtual machine is running.
-4. Copy-and-paste the web address starting with `http://127.0.0.1:8888/` into your web-browser. This should bring up a [Jupyter](https://jupyter.org/) interface.
-5. Click to open the file `open_me.ipynb`. This should open a new window containing a Jupyter notebook.
-6. Highlight all of the cells in the notebook and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described elsewhere. The tool automatically saves your progress as you go.
-7. Once you have finished annotating (you do not need to be completely finished---just finished for the time being), you can close the Jupyter browser tabs and press Control+C in the terminal window that is running the virtual machine to shut it down.
-8. To commit your work to GitHub you can use the following command (from within the root of the `hcp-annot-v123` repository:
+5. Copy-and-paste the web address starting with `http://127.0.0.1:8888/` into your web-browser. This should bring up a [Jupyter](https://jupyter.org/) interface.
+6. Click to open the file `open_me.ipynb`. This should open a new window containing a Jupyter notebook.
+6. Click on the last cell in the notebook (containing the text `ROITool(...)` at the end) and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described in the notebook itself. The tool automatically saves your progress whenever you change the subject, hemisphere, or contour, or whenever you press the Save button.
+7. Once you have finished annotating (you do not need to be completely finished---just finished for the time being), you can close the Jupyter browser tabs and press Control+C in the terminal window that is running the virtual machine (where you typed `docke compose up --build`) to shut it down.
+8. To commit your work to GitHub you will need to can use the following command (from within the root of the `hcp-annot-v123` repository:
 
    ```bash
    $ git commit -a -m '<some message>'
