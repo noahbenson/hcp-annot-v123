@@ -37,12 +37,13 @@ Using this repository requires signing up for GitHub and downloading/running som
    
    ```bash
    $ git fetch upstream/main
+   $ git pull
    ```
    
 4. Run `docker compose up --build` to start the virtual-machine.
 
    ```bash
-   $ git pull && docker compose up
+   $ docker compose up --build
    ```
    
    This command will likely take a long time to run the first time you run it, and it will produce a lot of output. Near the end of the output will be something that looks like this:
@@ -60,12 +61,13 @@ Using this repository requires signing up for GitHub and downloading/running som
 6. Click to open the file `open_me.ipynb`. This should open a new window containing a Jupyter notebook.
 6. Click on the last cell in the notebook (containing the text `ROITool(...)` at the end) and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described in the notebook itself. The tool automatically saves your progress whenever you change the subject, hemisphere, or contour, or whenever you press the Save button.
 7. Once you have finished annotating (you do not need to be completely finished---just finished for the time being), you can close the Jupyter browser tabs and press Control+C in the terminal window that is running the virtual machine (where you typed `docke compose up --build`) to shut it down.
-8. To commit your work to GitHub you will need to can use the following command (from within the root of the `hcp-annot-v123` repository:
+8. To commit your work to GitHub you will need to can use the following commands (from within the root of the `hcp-annot-v123` repository, where you also ran `docker compose up --build`):
 
    ```bash
+   $ git add save/<username>/*/*
    $ git commit -a -m '<some message>'
    ```
    
-   The `<some message>` can be any message you wish to attach to the batch of contours worked on since your last commit. It's fine for this project to commit an empty message (`''`)---comments on individual contours should go in the Notes section of the contour editor.
+   The `<username>` in the first command should be replaced with your GitHub username, and the `<some message>` can be any message you wish to attach to the batch of contours worked on since your last commit. It's fine for this project to commit an empty message (`''`)---comments on individual contours should go in the Notes section of the contour editor.
    
    **Important**: You should commit your work often, ideally after every time you finish working on a set of contours. Committing the work mostly just prevents work from being lost.
