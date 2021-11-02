@@ -222,17 +222,16 @@ subject_data = pimms.lmap({(sid,h): curry_prep_subdata(sid, h)
                            for sid in subject_ids
                            for h in ['lh','rh']})
 
-boundary_contours = pyr.pmap(
-    {'V1-middle': 'isoang_90',
-     'V1/V2 dorsal': 'isoang_vml',
-     'V1/V2 ventral': 'isoang_vmu',
-     'V2/V3 dorsal': 'isoang_hml',
-     'V2/V3 ventral': 'isoang_hmu',
-     'V3/Outer dorsal': 'isoang_vml',
-     'V3/Outer ventral': 'isoang_vmu'})
-contour_names = tuple(['0.5° iso-eccen'] + 
-                      ['%d° iso-eccen' % k for k in [1,2,4,7]] +
-                      list(boundary_contours.keys()))
+boundary_contours = {'V3/Outer ventral': 'isoang_vmu',
+                     'V2/V3 ventral': 'isoang_hmu',
+                     'V1/V2 ventral': 'isoang_vmu',
+                     'V1-middle': 'isoang_90',
+                     'V1/V2 dorsal': 'isoang_vml',
+                     'V2/V3 dorsal': 'isoang_hml',
+                     'V3/Outer dorsal': 'isoang_vml'}
+contour_names = tuple(list(boundary_contours.keys()) + 
+                      ['0.5° iso-eccen'] + 
+                      ['%d° iso-eccen' % k for k in [1,2,4,7]])
 contour_key = dict(boundary_contours)
 contour_key['0.5° iso-eccen'] = 'isoecc_0.5'
 for k in [1,2,4,7]:
@@ -251,6 +250,44 @@ contour_save_key = pyr.pmap(
      '2° iso-eccen': 'isoecc_2',
      '4° iso-eccen': 'isoecc_4',
      '7° iso-eccen': 'isoecc_7'})
+legend_key = {'V3_ventral': 'V3/Outer ventral',
+              'V2_ventral': 'V2/V3 ventral',
+              'V1_ventral': 'V1/V2 ventral',
+              'V1_mid': 'V1-middle',
+              'V1_dorsal': 'V1/V2 dorsal',
+              'V2_dorsal': 'V2/V3 dorsal',
+              'V3_dorsal': 'V3/Outer dorsal',
+              '0.5': '0.5° iso-eccen',
+              '1': '1° iso-eccen',
+              '2': '2° iso-eccen',
+              '4': '4° iso-eccen',
+              '7': '7° iso-eccen'}
+legend_rkey = {v:k for (k,v) in legend_key.items()}
+
+def load_legimage(load_path, h, imname):
+    from PIL import Image
+    flname = legend_rkey[imname]
+    flnm = os.path.join(load_path, 'legends', f'{h}_{flname}.png')
+    with Image.open(flnm) as im:
+        arr = np.array(im)
+        ii = arr == 255
+        arr[np.all(ii, axis=-1), :] = 0
+    return arr
+def curry_load_legimage(load_path, h, imname):
+    return lambda:load_legimage(load_path, h, imname)
+def prep_legends(load_path=default_load_path, osf_url=default_osf_url):
+    dirname = os.path.join(load_path, 'legends')
+    if not os.path.isfile(dirname):
+        pp = ny.util.pseudo_path(osf_url)
+        path = pp.local_path('annot-images', 'legends.tar.gz')
+        import tarfile
+        with tarfile.open(path) as fl:
+            fl.extractall(load_path)
+    ims = {h: pimms.lmap({imname: curry_load_legimage(load_path, h, imname)
+                          for imname in legend_key.values()})
+           for h in ['lh','rh']}
+    return pyr.pmap(ims)
+legend_data = prep_legends()
 
 # #ROITool #####################################################################
 class ROITool(object):
@@ -366,6 +403,12 @@ class ROITool(object):
         fig.canvas.header_visible = False
         fig.canvas.footer_visible = False
         #ax.format_coord = lambda x,y: ''
+        # Make the legend axes
+        self.legend_axes = fig.add_axes([0.35,0.35,0.3,0.3])
+        legim = legend_data[self.hemi][self.start_contour]
+        self.legend_implot = self.legend_axes.imshow(legim)
+        self.legend_axes.axis('equal')
+        self.legend_axes.axis('off')
         self.wang_plot = segs_decorate_plot(
             ax, segs, color=self.anat_color.value, lw=0.3, zorder=10,
             grid=grid, imshape=imshape)
@@ -434,7 +477,7 @@ class ROITool(object):
             subdata = subject_data[(sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = plot_imcat(subdata, grid, c)
+            im0 = plot_imcat(subdata, self.grid, c)
             self.image_plot.set_data(im0)
             for ln in self.wang_plot: ln.remove()
             segs = subdata['wang']
@@ -442,6 +485,8 @@ class ROITool(object):
                 ax, segs,
                 grid=self.grid, imshape=self.imshape,
                 color=self.anat_color.value, lw=0.3, zorder=10)
+            anat = self.anat_shown.value
+            for ln in self.wang_plot: ln.set_visible(anat)
             pts = self.clicks[sid][h][contour]
             self.contour_plot = clicks_decorate_plot(
                 ax, pts, 'o-',
@@ -456,6 +501,7 @@ class ROITool(object):
             self.line_select.value = self.start_contour
             self.contour_shown.value = True
             self.notes_area.value = self.notes[sid][h][contour][0]
+            self.redraw_legend()
         elif var == 'hemi':
             self.save()
             # New plots:
@@ -463,7 +509,7 @@ class ROITool(object):
             subdata = subject_data[(self.sid, h)]
             contour = self.start_contour
             c = contour_key[contour]
-            im0 = plot_imcat(subdata, grid, c)
+            im0 = plot_imcat(subdata, self.grid, c)
             self.image_plot.set_data(im0)
             # Update Wang plot lines:
             for ln in self.wang_plot: ln.remove()
@@ -472,8 +518,8 @@ class ROITool(object):
                 ax, segs,
                 grid=self.grid, imshape=self.imshape,
                 color=self.anat_color.value, lw=0.3, zorder=10)
-            for ln in self.wang_plot:
-                ln.set_visible(self.anat_shown.value)
+            anat = self.anat_shown.value
+            for ln in self.wang_plot: ln.set_visible(anat)
             # And the drawn contours:
             for c in self.contour_plot: c.remove()
             pts = self.clicks[sid][h][contour]
@@ -490,6 +536,7 @@ class ROITool(object):
             self.line_select.value = self.start_contour
             self.contour_shown.value = True
             self.notes_area.value = self.notes[sid][h][contour][0]
+            self.redraw_legend()
         elif var == 'line':
             self.save()
             # Remove contour plots if need-be
@@ -511,6 +558,7 @@ class ROITool(object):
                 ln.set_visible(True)
             self.draw_bg_contours()
             self.notes_area.value = self.notes[sid][h][contour][0]
+            self.redraw_legend()
         elif var == 'anat':
             anat = change.new
             for ln in self.wang_plot: ln.set_visible(anat)
@@ -756,6 +804,11 @@ class ROITool(object):
         h = self.hemi.lower()
         contour = self.line_select.value
         self.notes_area.value = self.notes[sid][h][contour][0]
+    def redraw_legend(self):
+        contour = self.line_select.value
+        legim = legend_data[self.hemi][contour]
+        self.legend_implot.set_data(legim)
+
         
         
         
