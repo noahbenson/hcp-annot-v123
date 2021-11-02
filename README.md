@@ -36,9 +36,11 @@ Using this repository requires signing up for GitHub and downloading/running som
 3. Run `git fetch upstream/main` to update the repository with any new changes.
    
    ```bash
-   $ git fetch upstream/main
+   $ git fetch
    $ git pull
    ```
+   
+   It is possible after `git pull` that you will be taken into an editor like vim or emacs to comment on a merge request. If you are, you can simply exit out of the editor without changing the merge message. In vim (the most common editor) you can do this by typing `:wq` then pressing enter. In emacs, you can exit by pressing CTRL+X followed by CTRL+C. In Nano, you can simply press CTRL+X.
    
 4. Run `docker compose up --build` to start the virtual-machine.
 
