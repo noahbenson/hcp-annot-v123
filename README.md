@@ -33,7 +33,7 @@ Using this repository requires signing up for GitHub and downloading/running som
 
 #### Running the Tool (follow these each time you work on the project)
 
-3. Run `git fetch upstream/main` to update the repository with any new changes.
+3. Run `git fetch` and `git pull` to update the repository with any new changes.
    
    ```bash
    $ git fetch
