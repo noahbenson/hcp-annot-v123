@@ -33,14 +33,13 @@ Using this repository requires signing up for GitHub and downloading/running som
 
 #### Running the Tool (follow these each time you work on the project)
 
-3. Run `git fetch` and `git pull` to update the repository with any new changes.
+3. Update the repository with any new changes. To do this, start by going to **your** copy of the repository: `http://github.com/<username>/hcp-annot-v123` where `<username>` is your GitHub username. There should be a green button named "Code" in the upper-right section of this page. Just below this button, there will be a button labeled "Fetch Upstream" with a little arrow next to it. Click the arrow and select "Fetch and Merge" to update your repository. If you are asked to enter a merge message, you can safely leave this message unchanged. If you run this "Fetch and Merge" step, you then need to run the following in the command line:
    
    ```bash
-   $ git fetch
    $ git pull
    ```
    
-   It is possible after `git pull` that you will be taken into an editor like vim or emacs to comment on a merge request. If you are, you can simply exit out of the editor without changing the merge message. In vim (the most common editor) you can do this by typing `:wq` then pressing enter. In emacs, you can exit by pressing CTRL+X followed by CTRL+C. In Nano, you can simply press CTRL+X.
+   If there was no "Fetch Upstream" button, you can skip this step.
    
 4. Run `docker compose up --build` to start the virtual-machine.
 
@@ -59,6 +58,8 @@ Using this repository requires signing up for GitHub and downloading/running som
    ```
    
    This indicates that the virtual machine is running.
+   
+   If for some reason you think that your docker instance is not building the annotation tool correctly, or that something about the build is not being updated, you can run the following command before the `docker compose up --build` command to ensure that the docker image is rebuilt cleanly: `docker build --no-cache .`.
 5. Copy-and-paste the web address starting with `http://127.0.0.1:8888/` into your web-browser. This should bring up a [Jupyter](https://jupyter.org/) interface.
 6. Click to open the file `open_me.ipynb`. This should open a new window containing a Jupyter notebook.
 6. Click on the last cell in the notebook (containing the text `ROITool(...)` at the end) and press Control+Enter. This should create an output cell below the original cell that contains the annotation tool. The use of this tool is described in the notebook itself. The tool automatically saves your progress whenever you change the subject, hemisphere, or contour, or whenever you press the Save button.
@@ -73,3 +74,4 @@ Using this repository requires signing up for GitHub and downloading/running som
    The `<username>` in the first command should be replaced with your GitHub username, and the `<some message>` can be any message you wish to attach to the batch of contours worked on since your last commit. It's fine for this project to commit an empty message (`''`)---comments on individual contours should go in the Notes section of the contour editor.
    
    **Important**: You should commit your work often, ideally after every time you finish working on a set of contours. Committing the work mostly just prevents work from being lost.
+
