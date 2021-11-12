@@ -106,7 +106,9 @@ def plot_vmbound(fmap, vd, axes=None, cmap='highpeak', cod_threshold=None):
     vd = vd[0].lower()
     if vd == 'd':
         # Flip up and down
-        ang[ii] = np.sign(ang[ii])*(180 - np.abs(ang[ii]))
+        sgn = np.sign(ang[ii])
+        sgn[sgn == 0] = 1
+        ang[ii] = sgn*(180 - np.abs(ang[ii]))
     # Center at +x axis
     ang[ii] = np.mod(90 - ang[ii] + 180, 360) - 180
     if cmap == 'highlight': cmap = highlight_cmap
@@ -124,7 +126,9 @@ def plot_hmbound(fmap, vd, axes=None, cmap='highpeak', cod_threshold=None):
     vd = vd[0].lower()
     if vd == 'd':
         # Flip up and down
-        ang = np.sign(ang)*(180 - np.abs(ang))
+        sgn = np.sign(ang[ii])
+        sgn[sgn == 0] = 1
+        ang[ii] = sgn*(180 - np.abs(ang[ii]))
     # Center at +x axis
     if cmap == 'highlight': cmap = highlight_cmap
     elif cmap == 'highpeak': cmap = highpeak_cmap
@@ -132,6 +136,128 @@ def plot_hmbound(fmap, vd, axes=None, cmap='highpeak', cod_threshold=None):
           ('prf_variance_explained', cod_threshold, np.inf))
     return ny.cortex_plot(fmap, axes=axes, color=ang, mask=mask,
                           vmin=-180, vmax=180, cmap=cmap)
+def plot_isoecc_legend(ecc0, scale=1, log=True, cmap='highlight', axes=None,
+                       max_eccen=12, resolution=0.75):
+    vf = ny.vision.visual_field_mesh(max_eccentricity=max_eccen,
+                                     resolution=resolution)
+    (x,y) = vf.coordinates
+    ecc = np.sqrt(x**2 + y**2)
+    if log:
+        de = ny.to_logeccen(ecc) - ny.to_logeccen(ecc0)
+        q = (de + 1) * 0.5
+    else:
+        de = (ecc - ecc0)
+        q = 1 / (1 + np.exp(-scale*de))
+    if cmap == 'highlight': cmap = highlight_cmap
+    elif cmap == 'highpeak': cmap = highpeak_cmap
+    return ny.cortex_plot(vf, axes=axes, color=q, underlay='w',
+                          vmin=0, vmax=1, cmap=cmap)
+def plot_isoang_legend(ang0, scale=180, cmap='highlight', axes=None,
+                       max_eccen=12, resolution=0.75):
+    vf = ny.vision.visual_field_mesh(max_eccentricity=max_eccen,
+                                     resolution=resolution)
+    (x,y) = vf.coordinates
+    ang = np.arctan2(y, x)
+    ang = np.mod(90 - 180/np.pi*ang + 180, 360) - 180
+    if abs: (ang,ang0) = (np.abs(ang), np.abs(ang0))
+    da = (ang - ang0)
+    q = da / (2*scale) + 0.5
+    q[ny.util.nangt(q, 1)] = 1
+    q[ny.util.nanlt(q, 0)] = 0
+    if cmap == 'highlight': cmap = highlight_cmap
+    elif cmap == 'highpeak': cmap = highpeak_cmap
+    return ny.cortex_plot(vf, axes=axes, color=q, underlay='w',
+                          vmin=0, vmax=1, cmap=cmap)
+def plot_vmbound_legend(vd, h, cmap='highpeak', axes=None,
+                        max_eccen=12, resolution=0.75):
+    vf = ny.vision.visual_field_mesh(max_eccentricity=max_eccen,
+                                     resolution=resolution)
+    (x,y) = vf.coordinates
+    ang = np.arctan2(y, x)
+    ang = np.mod(90 - 180/np.pi*ang + 180, 360) - 180
+    if h == 'rh': ang = -ang
+    vd = vd[0].lower()
+    if vd == 'd':
+        # Flip up and down
+        sgn = np.sign(ang)
+        sgn[sgn == 0] = 1
+        ang = sgn*(180 - np.abs(ang))
+    # Center at +x axis
+    ang = np.mod(90 - ang + 180, 360) - 180
+    if cmap == 'highlight': cmap = highlight_cmap
+    elif cmap == 'highpeak': cmap = highpeak_cmap
+    return ny.cortex_plot(vf, axes=axes, color=ang, underlay='w',
+                          vmin=-180, vmax=180, cmap=cmap)
+def plot_hmbound_legend(vd, h, axes=None, cmap='highpeak',
+                        max_eccen=12, resolution=0.75):
+    vf = ny.vision.visual_field_mesh(max_eccentricity=max_eccen,
+                                     resolution=resolution)
+    (x,y) = vf.coordinates
+    ang = np.arctan2(y, x)
+    ang = np.mod(90 - 180/np.pi*ang + 180, 360) - 180
+    if h == 'rh': ang = -ang
+    vd = vd[0].lower()
+    if vd == 'd':
+        # Flip up and down
+        sgn = np.sign(ang)
+        sgn[sgn == 0] = 1
+        ang = sgn*(180 - np.abs(ang))
+    # Center at +x axis
+    if cmap == 'highlight': cmap = highlight_cmap
+    elif cmap == 'highpeak': cmap = highpeak_cmap
+    return ny.cortex_plot(vf, axes=axes, color=ang, underlay='w',
+                          vmin=-180, vmax=180, cmap=cmap)
+def plot_all_legends(figwidth=10, dpi=72*4, facecolor='w', titlepad=0):
+    '''Plots all the highlight legends used in the HCP V1-V3 annotation tool.
+    
+    Returns
+    -------
+    matplotlib figure
+        A matplotlib figure object on which all the highlight legends have been
+        plotted on a 3 x 15 grid.
+    '''
+    tpad = titlepad
+    # Setup the figure and axes.
+    (fig,axs) = plt.subplots(3,5, figsize=(figwidth,figwidth*3/5), dpi=dpi,
+                             sharex=True, sharey=True, facecolor=facecolor)
+    fig.subplots_adjust(0,0,1,1,0.1,0.1)
+    axf = axs.flatten()
+    # Iso-eccen legends:
+    plot_isoecc_legend(0.5, axes=axf[0])
+    plot_isoecc_legend(1, axes=axf[1])
+    plot_isoecc_legend(2, axes=axf[2])
+    plot_isoecc_legend(4, axes=axf[3])
+    plot_isoecc_legend(7, axes=axf[4])
+    axf[0].set_title('0.5° iso-eccen', pad=tpad)
+    axf[1].set_title('1° iso-eccen', pad=tpad)
+    axf[2].set_title('2° iso-eccen', pad=tpad)
+    axf[3].set_title('4° iso-eccen', pad=tpad)
+    axf[4].set_title('7° iso-eccen', pad=tpad)
+    # Iso-angle legends:
+    plot_vmbound_legend('d', 'lh', axes=axf[5])
+    plot_vmbound_legend('d', 'rh', axes=axf[6])
+    plot_isoang_legend(90, axes=axf[7])
+    plot_vmbound_legend('v', 'lh', axes=axf[8])
+    plot_vmbound_legend('v', 'rh', axes=axf[9])
+    plot_hmbound_legend('d', 'lh', axes=axf[10])
+    plot_hmbound_legend('d', 'rh', axes=axf[11])
+    #plot_isoang_legend(90, axes=axf[12])
+    plot_hmbound_legend('v', 'lh', axes=axf[13])
+    plot_hmbound_legend('v', 'rh', axes=axf[14])
+    axf[5].set_title('LH V1/V2 dorsal', pad=tpad)
+    axf[6].set_title('RH V1/V2 dorsal', pad=tpad)
+    axf[7].set_title('LH/RH HVM', pad=tpad)
+    axf[8].set_title('LH V1/V2 ventral', pad=tpad)
+    axf[9].set_title('RH V1/V2 ventral', pad=tpad)
+    axf[10].set_title('LH V2/V3 dorsal', pad=tpad)
+    axf[11].set_title('RH V2/V3 dorsal', pad=tpad)
+    #axf[12].set_title('LH/RH HVM')
+    axf[13].set_title('LH V2/V3 ventral', pad=tpad)
+    axf[14].set_title('RH V2/V3 ventral', pad=tpad)
+    # Clean up the axes
+    for ax in axf:
+        ax.axis('off')
+    return fig
 def plot_curv(fmap, axes=None, cmap='gray', prop='convexity'):
     s = fmap.property(prop)
     s = s - np.min(s)
