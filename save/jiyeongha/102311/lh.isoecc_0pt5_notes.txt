@@ -1,0 +1,1 @@
+I think the upper left image doesn't reflect the true 0.5 eccentricity... So I drew based on the eccentricity mapping data (assuming 0.5 is dark-navy).
