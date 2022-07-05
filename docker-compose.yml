@@ -5,6 +5,8 @@ services:
       ports:
          - "8888:8888"
       volumes:
-         - ${PWD}/hcpannot:/opt/conda/lib/python3.9/hcpannot
+         - ${PWD}/hcpannot:/opt/ext/python/hcpannot
          - ${PWD}/save:/save
          - ${PWD}/.git:/home/jovyan/.extgit
+      environment:
+         - PYTHONPATH=/opt/ext/python

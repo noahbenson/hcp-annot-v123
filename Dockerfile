@@ -72,6 +72,7 @@ COPY work/roi-drawing.ipynb /home/$NB_USER/open_me.ipynb
 
 USER root
 RUN chown -R $NB_USER /home/$NB_USER/.ipython && chmod 700 /home/$NB_USER/.ipython
+RUN mkdir -p /opt/ext/python
 USER $NB_USER
 
 # And mark it as the entrypoint
