@@ -1,0 +1,1 @@
+0.5 and 1 degree eccentricities annotations seems to be too small as it does not cross v1/v2 and middle annotations. 
