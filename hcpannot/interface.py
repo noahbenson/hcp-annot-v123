@@ -183,7 +183,29 @@ def prep_subdata(sid, h, load_path=default_load_path, osf_url=default_osf_url):
         path = pp.local_path('annot-images', '%d.tar.gz' % sid)
         import tarfile
         with tarfile.open(path) as fl:
-            fl.extractall(load_path)
+            
+            import os
+            
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(fl, load_path)
     ims = {imname: curry_load_subimage(sid, h, imname,
                                        load_path=load_path, osf_url=osf_url)
            for imname in image_order}
@@ -282,7 +304,26 @@ def prep_legends(load_path=default_load_path, osf_url=default_osf_url):
         path = pp.local_path('annot-images', 'legends.tar.gz')
         import tarfile
         with tarfile.open(path) as fl:
-            fl.extractall(load_path)
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(fl, load_path)
     ims = {h: pimms.lmap({imname: curry_load_legimage(load_path, h, imname)
                           for imname in legend_key.values()})
            for h in ['lh','rh']}
